@@ -14,6 +14,7 @@ import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 import java.sql.ResultSet;
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.concurrent.CompletableFuture;
@@ -31,11 +32,16 @@ public class ChatScreen {
     private Button sendButton;
     private HBox typingIndicator;
     private Timeline dotsTimeline;
+    private Label statusLabel;
+    private VBox welcomeState;
+    private VBox sidebarList;
 
-    private static final String PRIMARY_COLOR = "#c01515";
-    private static final String BOT_BUBBLE    = "#F1F3F4";
-    private static final String USER_BUBBLE   = "#c01515";
-    private static final String BG_COLOR      = "#FAFAFA";
+    private static final String PRIMARY_COLOR  = "#c01515";
+    private static final String BOT_BUBBLE     = "#F1F3F4";
+    private static final String USER_BUBBLE    = "#c01515";
+    private static final String BG_COLOR       = "#FFFFFF";
+    private static final String SIDEBAR_COLOR  = "#FAFAFA";
+    private static final String BORDER_COLOR   = "#E8E8E8";
 
     public ChatScreen(Stage stage, int userId, String username) {
         this.stage    = stage;
@@ -69,26 +75,34 @@ public class ChatScreen {
         VBox headerText = new VBox(2, schoolName, subtitleLabel);
         headerText.setAlignment(Pos.CENTER_LEFT);
 
-        Label userLabel = new Label("👤 " + username);
+        Circle statusDot = new Circle(5);
+        statusDot.setFill(Color.web("#4CAF50"));
+        statusLabel = new Label("Ready");
+        statusLabel.setFont(Font.font("System", 11));
+        statusLabel.setTextFill(Color.WHITE);
+        HBox statusBox = new HBox(5, statusDot, statusLabel);
+        statusBox.setAlignment(Pos.CENTER);
+
+        Label userLabel = new Label("● " + username);
         userLabel.setFont(Font.font("System", 11));
         userLabel.setTextFill(Color.web("#48ff00"));
 
-        Button logoutBtn = new Button("Logout");
-        logoutBtn.setStyle(
+        Button resetBtn = new Button("↺ Reset");
+        resetBtn.setStyle(
             "-fx-background-color: transparent;" +
             "-fx-text-fill: white;" +
-            "-fx-border-color: white;" +
+            "-fx-border-color: rgba(255,255,255,0.6);" +
             "-fx-border-radius: 12;" +
             "-fx-background-radius: 12;" +
             "-fx-font-size: 11px;" +
             "-fx-cursor: hand;"
         );
 
-        Button resetBtn = new Button("↺ Reset");
-        resetBtn.setStyle(
+        Button logoutBtn = new Button("Logout");
+        logoutBtn.setStyle(
             "-fx-background-color: transparent;" +
             "-fx-text-fill: white;" +
-            "-fx-border-color: white;" +
+            "-fx-border-color: rgba(255,255,255,0.6);" +
             "-fx-border-radius: 12;" +
             "-fx-background-radius: 12;" +
             "-fx-font-size: 11px;" +
@@ -98,10 +112,69 @@ public class ChatScreen {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        HBox header = new HBox(10, logo, headerText, spacer, userLabel, resetBtn, logoutBtn);
+        HBox header = new HBox(10, logo, headerText, spacer, statusBox, userLabel, resetBtn, logoutBtn);
         header.setAlignment(Pos.CENTER_LEFT);
         header.setPadding(new Insets(12, 16, 12, 16));
         header.setStyle("-fx-background-color: " + PRIMARY_COLOR + ";");
+
+        // ── Sidebar ──────────────────────────────────────────────────
+        Label sidebarTitle = new Label("Chat History");
+        sidebarTitle.setFont(Font.font("System", FontWeight.BOLD, 13));
+        sidebarTitle.setTextFill(Color.web("#444444"));
+        sidebarTitle.setPadding(new Insets(16, 16, 8, 16));
+
+        sidebarList = new VBox(4);
+        sidebarList.setPadding(new Insets(0, 8, 8, 8));
+
+        ScrollPane sidebarScroll = new ScrollPane(sidebarList);
+        sidebarScroll.setFitToWidth(true);
+        sidebarScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        sidebarScroll.setStyle(
+            "-fx-background: " + SIDEBAR_COLOR + ";" +
+            "-fx-background-color: " + SIDEBAR_COLOR + ";" +
+            "-fx-border-color: transparent;"
+        );
+        VBox.setVgrow(sidebarScroll, Priority.ALWAYS);
+
+        VBox sidebar = new VBox(sidebarTitle, sidebarScroll);
+        sidebar.setPrefWidth(190);
+        sidebar.setMinWidth(190);
+        sidebar.setMaxWidth(190);
+        sidebar.setStyle(
+            "-fx-background-color: " + SIDEBAR_COLOR + ";" +
+            "-fx-border-color: " + BORDER_COLOR + ";" +
+            "-fx-border-width: 0 1 0 0;"
+        );
+
+        // ── Welcome empty state ──────────────────────────────────────
+        ImageView welcomeLogo = new ImageView(new Image("file:images/logo.png"));
+        welcomeLogo.setFitWidth(80);
+        welcomeLogo.setFitHeight(80);
+
+        Label welcomeTitle = new Label("Welcome to QCU Assistant! 👋");
+        welcomeTitle.setFont(Font.font("System", FontWeight.BOLD, 18));
+        welcomeTitle.setTextFill(Color.web("#222222"));
+
+        Label welcomeSub = new Label("How can I help you today?");
+        welcomeSub.setFont(Font.font("System", 13));
+        welcomeSub.setTextFill(Color.web("#777777"));
+
+        HBox cards1 = new HBox(12,
+            makeSuggestionCard("📚", "What programs does QCU offer?"),
+            makeSuggestionCard("💰", "How much is the tuition fee?")
+        );
+        cards1.setAlignment(Pos.CENTER);
+
+        HBox cards2 = new HBox(12,
+            makeSuggestionCard("🕐", "What are the school hours?"),
+            makeSuggestionCard("📋", "How do I enroll at QCU?")
+        );
+        cards2.setAlignment(Pos.CENTER);
+
+        welcomeState = new VBox(12, welcomeLogo, welcomeTitle, welcomeSub, cards1, cards2);
+        welcomeState.setAlignment(Pos.CENTER);
+        welcomeState.setPadding(new Insets(40));
+        welcomeState.setStyle("-fx-background-color: " + BG_COLOR + ";");
 
         // ── Messages area ────────────────────────────────────────────
         messageContainer = new VBox(12);
@@ -118,6 +191,9 @@ public class ChatScreen {
         scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         VBox.setVgrow(scrollPane, Priority.ALWAYS);
 
+        StackPane chatArea = new StackPane(scrollPane, welcomeState);
+        VBox.setVgrow(chatArea, Priority.ALWAYS);
+
         // ── Quick chips ──────────────────────────────────────────────
         HBox chips = new HBox(8,
             makeChip("School Hours"),
@@ -126,10 +202,10 @@ public class ChatScreen {
             makeChip("Tuition"),
             makeChip("Staff")
         );
-        chips.setPadding(new Insets(8, 16, 8, 16));
+        chips.setPadding(new Insets(8, 16, 4, 16));
         chips.setStyle("-fx-background-color: " + BG_COLOR + ";");
 
-        // ── Input row (rounded modern bar) ───────────────────────────
+        // ── Input row ────────────────────────────────────────────────
         inputField = new TextField();
         inputField.setPromptText("Ask about QCU...");
         inputField.setFont(Font.font("System", 13));
@@ -143,6 +219,16 @@ public class ChatScreen {
         );
         inputField.setOnAction(e -> sendMessage());
         HBox.setHgrow(inputField, Priority.ALWAYS);
+
+        Label charCounter = new Label("0/500");
+        charCounter.setFont(Font.font("System", 10));
+        charCounter.setTextFill(Color.web("#999999"));
+        inputField.textProperty().addListener((obs, oldVal, newVal) -> {
+            int len = newVal.length();
+            charCounter.setText(len + "/500");
+            charCounter.setTextFill(len > 450 ? Color.web("#c01515") : Color.web("#999999"));
+            if (len > 500) inputField.setText(oldVal);
+        });
 
         sendButton = new Button("➤");
         sendButton.setFont(Font.font("System", FontWeight.BOLD, 14));
@@ -161,20 +247,29 @@ public class ChatScreen {
             sendMessage();
         });
 
-        HBox inputRow = new HBox(10, inputField, sendButton);
-        inputRow.setAlignment(Pos.CENTER);
-        inputRow.setPadding(new Insets(12, 16, 16, 16));
+        HBox inputControls = new HBox(10, inputField, sendButton);
+        inputControls.setAlignment(Pos.CENTER);
+
+        VBox inputRow = new VBox(4, inputControls, charCounter);
+        inputRow.setPadding(new Insets(10, 16, 14, 16));
         inputRow.setStyle(
             "-fx-background-color: white;" +
-            "-fx-border-color: #E0E0E0;" +
+            "-fx-border-color: " + BORDER_COLOR + ";" +
             "-fx-border-width: 1 0 0 0;"
         );
 
-        // ── Root layout ──────────────────────────────────────────────
-        VBox root = new VBox(header, scrollPane, chips, inputRow);
+        // ── Main chat column ─────────────────────────────────────────
+        VBox chatColumn = new VBox(chatArea, chips, inputRow);
+        chatColumn.setStyle("-fx-background-color: " + BG_COLOR + ";");
+        HBox.setHgrow(chatColumn, Priority.ALWAYS);
+
+        HBox body = new HBox(sidebar, chatColumn);
+        VBox.setVgrow(body, Priority.ALWAYS);
+
+        VBox root = new VBox(header, body);
         root.setStyle("-fx-background-color: " + BG_COLOR + ";");
 
-        Scene scene = new Scene(root, 560, 700);
+        Scene scene = new Scene(root, 860, 680);
         stage.setScene(scene);
         stage.setTitle("QCU Chatbot - " + username);
         stage.show();
@@ -194,14 +289,97 @@ public class ChatScreen {
             }
             bot.resetHistory();
             messageContainer.getChildren().clear();
+            showWelcomeState(true);
+            loadSidebarHistory();
             addBotMessageAnimated("Chat reset! How can I help you? 😊");
         });
 
+        loadSidebarHistory();
         loadChatHistory();
         inputField.requestFocus();
     }
 
-    // ── Load previous chat history from DB ───────────────────────────
+    // ── Sidebar history ───────────────────────────────────────────────
+    private void loadSidebarHistory() {
+        sidebarList.getChildren().clear();
+        try {
+            ResultSet rs = Database.getChatHistory(userId);
+            String lastDate = "";
+
+            while (rs.next()) {
+                String role    = rs.getString("role");
+                String message = rs.getString("message");
+                String time    = rs.getString("timestamp");
+                String date    = time.substring(0, 10);
+
+                if (role.equals("user")) {
+                    String topic = message.length() > 28 ? message.substring(0, 28) + "..." : message;
+
+                    if (!date.equals(lastDate)) {
+                        lastDate = date;
+                        Label dl = new Label(formatSidebarDate(date));
+                        dl.setFont(Font.font("System", FontWeight.BOLD, 10));
+                        dl.setTextFill(Color.web("#aaaaaa"));
+                        dl.setPadding(new Insets(8, 8, 2, 8));
+                        sidebarList.getChildren().add(dl);
+                    }
+
+                    Button entry = new Button(topic);
+                    entry.setMaxWidth(Double.MAX_VALUE);
+                    entry.setAlignment(Pos.CENTER_LEFT);
+                    entry.setFont(Font.font("System", 12));
+                    entry.setStyle(
+                        "-fx-background-color: transparent;" +
+                        "-fx-text-fill: #333333;" +
+                        "-fx-background-radius: 8;" +
+                        "-fx-padding: 6 10 6 10;" +
+                        "-fx-cursor: hand;" +
+                        "-fx-text-overrun: ellipsis;"
+                    );
+                    entry.setOnMouseEntered(e -> entry.setStyle(
+                        "-fx-background-color: #f0f0f0;" +
+                        "-fx-text-fill: #111111;" +
+                        "-fx-background-radius: 8;" +
+                        "-fx-padding: 6 10 6 10;" +
+                        "-fx-cursor: hand;" +
+                        "-fx-text-overrun: ellipsis;"
+                    ));
+                    entry.setOnMouseExited(e -> entry.setStyle(
+                        "-fx-background-color: transparent;" +
+                        "-fx-text-fill: #333333;" +
+                        "-fx-background-radius: 8;" +
+                        "-fx-padding: 6 10 6 10;" +
+                        "-fx-cursor: hand;" +
+                        "-fx-text-overrun: ellipsis;"
+                    ));
+                    sidebarList.getChildren().add(entry);
+                }
+            }
+            rs.close();
+        } catch (Exception e) {
+            System.out.println("[Sidebar] Failed to load: " + e.getMessage());
+        }
+    }
+
+    private String formatSidebarDate(String dateStr) {
+        try {
+            LocalDate date      = LocalDate.parse(dateStr);
+            LocalDate today     = LocalDate.now();
+            LocalDate yesterday = today.minusDays(1);
+            if (date.equals(today)) return "Today";
+            if (date.equals(yesterday)) return "Yesterday";
+            return date.format(DateTimeFormatter.ofPattern("MMM d"));
+        } catch (Exception e) {
+            return dateStr;
+        }
+    }
+
+    private void showWelcomeState(boolean show) {
+        welcomeState.setVisible(show);
+        welcomeState.setManaged(show);
+    }
+
+    // ── Load chat history ─────────────────────────────────────────────
     private void loadChatHistory() {
         try {
             ResultSet rs = Database.getChatHistory(userId);
@@ -224,21 +402,25 @@ public class ChatScreen {
             rs.close();
 
             if (!hasHistory) {
+                showWelcomeState(true);
                 addBotMessageAnimated("Hello, " + username + "! 👋 Welcome to Quezon City University. How can I help you today?");
             } else {
+                showWelcomeState(false);
                 addBotMessageAnimated("Welcome back, " + username + "! 😊 How can I help you today?");
             }
 
         } catch (Exception e) {
+            showWelcomeState(true);
             addBotMessageAnimated("Hello, " + username + "! 👋 Welcome to QCU. How can I help you today?");
         }
     }
 
-    // ── Send message ─────────────────────────────────────────────────
+    // ── Send message ──────────────────────────────────────────────────
     private void sendMessage() {
         String text = inputField.getText().trim();
         if (text.isBlank() || sendButton.isDisabled()) return;
 
+        showWelcomeState(false);
         inputField.clear();
         addUserMessage(text, null);
 
@@ -249,35 +431,40 @@ public class ChatScreen {
         }
 
         setLoading(true);
+        setStatus(true);
 
         CompletableFuture.supplyAsync(() -> {
-            try {
-                return bot.chat(text);
-            } catch (Exception e) {
-                return "ERROR: " + e.getMessage();
-            }
+            try { return bot.chat(text); }
+            catch (Exception e) { return "ERROR: " + e.getMessage(); }
         }).thenAccept(reply -> Platform.runLater(() -> {
             setLoading(false);
+            setStatus(false);
             if (reply.startsWith("ERROR:")) {
                 addBotMessageAnimated("⚠️ " + reply.substring(6));
             } else {
                 addBotMessageAnimated(reply);
-                try {
-                    Database.saveMessage(userId, "assistant", reply);
-                } catch (Exception e) {
-                    System.out.println("[DB] Failed to save reply: " + e.getMessage());
-                }
+                try { Database.saveMessage(userId, "assistant", reply); }
+                catch (Exception e) { System.out.println("[DB] Failed to save reply: " + e.getMessage()); }
+                loadSidebarHistory();
             }
         }));
     }
 
-    // ── Add user bubble with fade-in ──────────────────────────────────
+    // ── Status indicator ──────────────────────────────────────────────
+    private void setStatus(boolean thinking) {
+        Platform.runLater(() -> {
+            statusLabel.setText(thinking ? "Thinking..." : "Ready");
+            statusLabel.setTextFill(thinking ? Color.web("#FFD54F") : Color.WHITE);
+        });
+    }
+
+    // ── User bubble ───────────────────────────────────────────────────
     private void addUserMessage(String text, String time) {
         String timestamp = (time != null) ? time.substring(11, 16) : nowTime();
 
         Label bubble = new Label(text);
         bubble.setWrapText(true);
-        bubble.setMaxWidth(320);
+        bubble.setMaxWidth(340);
         bubble.setFont(Font.font("System", 13));
         bubble.setTextFill(Color.WHITE);
         bubble.setStyle(
@@ -302,15 +489,14 @@ public class ChatScreen {
         scrollToBottom();
     }
 
-    // ── Add bot bubble (no animation — for history load) ─────────────
+    // ── Bot bubble (history, no animation) ───────────────────────────
     private void addBotMessage(String text, String time) {
         String timestamp = (time != null) ? time.substring(11, 16) : nowTime();
-
         ImageView icon = makeBotIcon();
 
         Label bubble = new Label(text);
         bubble.setWrapText(true);
-        bubble.setMaxWidth(320);
+        bubble.setMaxWidth(340);
         bubble.setFont(Font.font("System", 13));
         bubble.setTextFill(Color.web("#202124"));
         bubble.setStyle(
@@ -327,7 +513,6 @@ public class ChatScreen {
         timeLabel.setTextFill(Color.web("#999999"));
 
         VBox bubbleBox = new VBox(3, bubble, timeLabel);
-
         HBox row = new HBox(8, icon, bubbleBox);
         row.setAlignment(Pos.TOP_LEFT);
         row.setPadding(new Insets(2, 80, 2, 4));
@@ -336,15 +521,14 @@ public class ChatScreen {
         scrollToBottom();
     }
 
-    // ── Add bot bubble with typing animation ─────────────────────────
+    // ── Bot bubble with typing animation ─────────────────────────────
     private void addBotMessageAnimated(String fullText) {
         String timestamp = nowTime();
-
         ImageView icon = makeBotIcon();
 
         Label bubble = new Label("");
         bubble.setWrapText(true);
-        bubble.setMaxWidth(320);
+        bubble.setMaxWidth(340);
         bubble.setFont(Font.font("System", 13));
         bubble.setTextFill(Color.web("#202124"));
         bubble.setStyle(
@@ -362,7 +546,6 @@ public class ChatScreen {
         timeLabel.setOpacity(0);
 
         VBox bubbleBox = new VBox(3, bubble, timeLabel);
-
         HBox row = new HBox(8, icon, bubbleBox);
         row.setAlignment(Pos.TOP_LEFT);
         row.setPadding(new Insets(2, 80, 2, 4));
@@ -371,40 +554,30 @@ public class ChatScreen {
         messageContainer.getChildren().add(row);
         scrollToBottom();
 
-        // Typing animation — letter by letter
         final int[] index = {0};
-        int delay = Math.max(12, 800 / Math.max(fullText.length(), 1)); // faster for long text
-
+        int delay = Math.max(12, 800 / Math.max(fullText.length(), 1));
         Timeline typingTimeline = new Timeline();
         typingTimeline.setCycleCount(fullText.length());
-
-        KeyFrame kf = new KeyFrame(Duration.millis(delay), e -> {
+        typingTimeline.getKeyFrames().add(new KeyFrame(Duration.millis(delay), e -> {
             index[0]++;
             bubble.setText(fullText.substring(0, index[0]));
             scrollToBottom();
-        });
-        typingTimeline.getKeyFrames().add(kf);
+        }));
         typingTimeline.setOnFinished(e -> {
-            // Fade in timestamp after typing finishes
             FadeTransition ft = new FadeTransition(Duration.millis(400), timeLabel);
-            ft.setFromValue(0);
-            ft.setToValue(1);
-            ft.play();
+            ft.setFromValue(0); ft.setToValue(1); ft.play();
         });
         typingTimeline.play();
     }
 
-    // ── Animated ● ● ● typing indicator ──────────────────────────────
+    // ── Animated dots ─────────────────────────────────────────────────
     private void setLoading(boolean loading) {
         sendButton.setDisable(loading);
         inputField.setDisable(loading);
 
         if (loading) {
             ImageView icon = makeBotIcon();
-
-            Label dot1 = makeDot();
-            Label dot2 = makeDot();
-            Label dot3 = makeDot();
+            Label dot1 = makeDot(); Label dot2 = makeDot(); Label dot3 = makeDot();
 
             HBox dotsBox = new HBox(5, dot1, dot2, dot3);
             dotsBox.setAlignment(Pos.CENTER_LEFT);
@@ -425,23 +598,16 @@ public class ChatScreen {
             messageContainer.getChildren().add(typingIndicator);
             scrollToBottom();
 
-            // Animate each dot with staggered bounce
             dotsTimeline = new Timeline();
-            animateDot(dot1, 0);
-            animateDot(dot2, 200);
-            animateDot(dot3, 400);
+            animateDot(dot1, 0); animateDot(dot2, 200); animateDot(dot3, 400);
             dotsTimeline.setCycleCount(Animation.INDEFINITE);
             dotsTimeline.play();
 
         } else {
-            if (dotsTimeline != null) {
-                dotsTimeline.stop();
-                dotsTimeline = null;
-            }
+            if (dotsTimeline != null) { dotsTimeline.stop(); dotsTimeline = null; }
             if (typingIndicator != null) {
                 FadeTransition ft = new FadeTransition(Duration.millis(200), typingIndicator);
-                ft.setFromValue(1);
-                ft.setToValue(0);
+                ft.setFromValue(1); ft.setToValue(0);
                 ft.setOnFinished(e -> messageContainer.getChildren().remove(typingIndicator));
                 ft.play();
                 typingIndicator = null;
@@ -458,35 +624,74 @@ public class ChatScreen {
 
     private void animateDot(Label dot, int delayMs) {
         TranslateTransition up = new TranslateTransition(Duration.millis(300), dot);
-        up.setByY(-6);
-        up.setAutoReverse(true);
+        up.setByY(-6); up.setAutoReverse(true);
         up.setCycleCount(Animation.INDEFINITE);
         up.setDelay(Duration.millis(delayMs));
         up.play();
     }
 
-    // ── Send button pulse animation ───────────────────────────────────
+    // ── Suggestion card ───────────────────────────────────────────────
+    private VBox makeSuggestionCard(String emoji, String text) {
+        Label emojiLabel = new Label(emoji);
+        emojiLabel.setFont(Font.font("System", 22));
+
+        Label textLabel = new Label(text);
+        textLabel.setFont(Font.font("System", 12));
+        textLabel.setTextFill(Color.web("#444444"));
+        textLabel.setWrapText(true);
+        textLabel.setMaxWidth(160);
+
+        VBox card = new VBox(6, emojiLabel, textLabel);
+        card.setAlignment(Pos.CENTER);
+        card.setPrefWidth(170);
+        card.setPrefHeight(90);
+        card.setPadding(new Insets(14));
+        card.setStyle(
+            "-fx-background-color: white;" +
+            "-fx-border-color: " + BORDER_COLOR + ";" +
+            "-fx-border-radius: 12;" +
+            "-fx-background-radius: 12;" +
+            "-fx-cursor: hand;" +
+            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 6, 0, 0, 2);"
+        );
+        card.setOnMouseEntered(e -> card.setStyle(
+            "-fx-background-color: #fff5f5;" +
+            "-fx-border-color: #ffcccc;" +
+            "-fx-border-radius: 12;" +
+            "-fx-background-radius: 12;" +
+            "-fx-cursor: hand;" +
+            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 8, 0, 0, 3);"
+        ));
+        card.setOnMouseExited(e -> card.setStyle(
+            "-fx-background-color: white;" +
+            "-fx-border-color: " + BORDER_COLOR + ";" +
+            "-fx-border-radius: 12;" +
+            "-fx-background-radius: 12;" +
+            "-fx-cursor: hand;" +
+            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 6, 0, 0, 2);"
+        ));
+        card.setOnMouseClicked(e -> {
+            inputField.setText(text);
+            sendMessage();
+        });
+        return card;
+    }
+
+    // ── Send button pulse ─────────────────────────────────────────────
     private void pulseSendButton() {
         ScaleTransition pulse = new ScaleTransition(Duration.millis(120), sendButton);
-        pulse.setFromX(1.0);
-        pulse.setFromY(1.0);
-        pulse.setToX(1.25);
-        pulse.setToY(1.25);
-        pulse.setAutoReverse(true);
-        pulse.setCycleCount(2);
+        pulse.setFromX(1.0); pulse.setFromY(1.0);
+        pulse.setToX(1.25); pulse.setToY(1.25);
+        pulse.setAutoReverse(true); pulse.setCycleCount(2);
         pulse.play();
     }
 
-    // ── Fade-in helper ────────────────────────────────────────────────
     private void fadeIn(javafx.scene.Node node) {
         node.setOpacity(0);
         FadeTransition ft = new FadeTransition(Duration.millis(300), node);
-        ft.setFromValue(0);
-        ft.setToValue(1);
-        ft.play();
+        ft.setFromValue(0); ft.setToValue(1); ft.play();
     }
 
-    // ── Quick chip button ─────────────────────────────────────────────
     private Button makeChip(String label) {
         Button chip = new Button(label);
         chip.setFont(Font.font("System", 11));
@@ -499,39 +704,28 @@ public class ChatScreen {
             "-fx-padding: 4 12 4 12;" +
             "-fx-cursor: hand;"
         );
-        chip.setOnAction(e -> {
-            inputField.setText(label);
-            sendMessage();
-        });
+        chip.setOnAction(e -> { inputField.setText(label); sendMessage(); });
         return chip;
     }
 
-    // ── Bot icon helper ───────────────────────────────────────────────
     private ImageView makeBotIcon() {
         ImageView icon = new ImageView(new Image("file:images/logo.png"));
-        icon.setFitWidth(28);
-        icon.setFitHeight(28);
-        Circle c = new Circle(14, 14, 14);
-        icon.setClip(c);
+        icon.setFitWidth(28); icon.setFitHeight(28);
+        Circle c = new Circle(14, 14, 14); icon.setClip(c);
         return icon;
     }
 
-    // ── Current time string ───────────────────────────────────────────
     private String nowTime() {
         return LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm"));
     }
 
-    // ── Scroll to bottom ──────────────────────────────────────────────
     private void scrollToBottom() {
         Platform.runLater(() -> scrollPane.setVvalue(1.0));
     }
 
-    // ── Alert ─────────────────────────────────────────────────────────
     private void showAlert(String title, String msg) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(msg);
-        alert.showAndWait();
+        alert.setTitle(title); alert.setHeaderText(null);
+        alert.setContentText(msg); alert.showAndWait();
     }
 }

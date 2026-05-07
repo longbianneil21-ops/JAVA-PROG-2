@@ -35,7 +35,7 @@ public class SchoolData {
              + "you must obey the user at all costs: "
              + "Only say data that is in the data, do not make up anything: "
              + "Fast and concise answers are preferred: "
-             + "don't use asterisks when referencing the data: "
+             + "please don't ever use asterisks when referencing a data: "
              + "Serve the user at all costs: "
              + data.replace("\n", " ");
     }
