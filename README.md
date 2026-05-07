@@ -1,4 +1,4 @@
-# Greenwood High School Chatbot - JavaFX UI
+# QCU Chatbot - JavaFX UI
 =============================================
 
 ## Project Structure
