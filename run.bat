@@ -1,7 +1,26 @@
 @echo off
+cd /d %~dp0
+
+set JAVAFX=C:\javafx-sdk\lib
+set MYSQL=lib\mysql-connector-j-9.7.0.jar
+
 echo Compiling...
-javac --module-path "C:\javafx-sdk\lib" --add-modules javafx.controls -cp "src;C:\javafx-sdk\lib\mysql-connector-j-9.7.0.jar" src\Main.java src\LoginScreen.java src\RegisterScreen.java src\ChatScreen.java src\Chatbot.java src\Database.java src\Config.java src\SchoolData.java -d out
+
+javac ^
+--module-path "%JAVAFX%" ^
+--add-modules javafx.controls ^
+-cp "%MYSQL%" ^
+-d out ^
+src\*.java
+
+if %errorlevel% neq 0 pause
 
 echo Running...
-java --module-path "C:\javafx-sdk\lib" --add-modules javafx.controls -cp "out;C:\javafx-sdk\lib\mysql-connector-j-9.7.0.jar" Main
+
+java ^
+--module-path "%JAVAFX%" ^
+--add-modules javafx.controls ^
+-cp "out;%MYSQL%" ^
+Main
+
 pause

@@ -39,12 +39,12 @@ public class Config {
 
     public static String getSchoolDataPath() {
         String path = get("SCHOOL_DATA_PATH");
-        return (path != null) ? path : "data/school_data.docx";
+        return (path != null) ? path : "data/SCHOOL_DATA.txt";
     }
 
     public static String getModel() {
         String model = get("MODEL");
-        return (model != null) ? model : "nvidia/nemotron-3-super-120b-a12b:free";
+        return (model != null) ? model : "openrouter/owl-alpha";
     }
 
     public static int getMaxTokens() {

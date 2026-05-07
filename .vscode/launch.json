@@ -1,0 +1,12 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Run School Chatbot",
+            "request": "launch",
+            "mainClass": "Main",
+            "vmArgs": "--module-path \"C:\\javafx-sdk\\lib\" --add-modules javafx.controls"
+        }
+    ]
+}
