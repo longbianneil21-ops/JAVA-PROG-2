@@ -65,3 +65,4 @@ java --module-path "C:\javafx-sdk\lib" --add-modules javafx.controls,javafx.fxml
 - Typing indicator while waiting
 - Reset button to clear conversation
 - Runs as a desktop app
+

@@ -36,12 +36,15 @@ public class ChatScreen {
     private VBox welcomeState;
     private VBox sidebarList;
 
-    private static final String PRIMARY_COLOR  = "#c01515";
-    private static final String BOT_BUBBLE     = "#F1F3F4";
-    private static final String USER_BUBBLE    = "#c01515";
-    private static final String BG_COLOR       = "#FFFFFF";
-    private static final String SIDEBAR_COLOR  = "#FAFAFA";
-    private static final String BORDER_COLOR   = "#E8E8E8";
+    private int currentSessionId = -1;
+    private Button activeSessionBtn = null;
+
+    private static final String PRIMARY_COLOR = "#c01515";
+    private static final String BOT_BUBBLE   = "#F1F3F4";
+    private static final String USER_BUBBLE  = "#c01515";
+    private static final String BG_COLOR     = "#FFFFFF";
+    private static final String SIDEBAR_COLOR = "#FAFAFA";
+    private static final String BORDER_COLOR  = "#E8E8E8";
 
     public ChatScreen(Stage stage, int userId, String username) {
         this.stage    = stage;
@@ -59,8 +62,7 @@ public class ChatScreen {
 
         // ── Header ───────────────────────────────────────────────────
         ImageView logo = new ImageView(new Image("file:images/logo.png"));
-        logo.setFitWidth(38);
-        logo.setFitHeight(38);
+        logo.setFitWidth(38); logo.setFitHeight(38);
         Circle clip = new Circle(19, 19, 19);
         logo.setClip(clip);
 
@@ -88,26 +90,10 @@ public class ChatScreen {
         userLabel.setTextFill(Color.web("#48ff00"));
 
         Button resetBtn = new Button("↺ Reset");
-        resetBtn.setStyle(
-            "-fx-background-color: transparent;" +
-            "-fx-text-fill: white;" +
-            "-fx-border-color: rgba(255,255,255,0.6);" +
-            "-fx-border-radius: 12;" +
-            "-fx-background-radius: 12;" +
-            "-fx-font-size: 11px;" +
-            "-fx-cursor: hand;"
-        );
+        resetBtn.setStyle(headerBtnStyle());
 
         Button logoutBtn = new Button("Logout");
-        logoutBtn.setStyle(
-            "-fx-background-color: transparent;" +
-            "-fx-text-fill: white;" +
-            "-fx-border-color: rgba(255,255,255,0.6);" +
-            "-fx-border-radius: 12;" +
-            "-fx-background-radius: 12;" +
-            "-fx-font-size: 11px;" +
-            "-fx-cursor: hand;"
-        );
+        logoutBtn.setStyle(headerBtnStyle());
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -118,12 +104,25 @@ public class ChatScreen {
         header.setStyle("-fx-background-color: " + PRIMARY_COLOR + ";");
 
         // ── Sidebar ──────────────────────────────────────────────────
-        Label sidebarTitle = new Label("Chat History");
-        sidebarTitle.setFont(Font.font("System", FontWeight.BOLD, 13));
-        sidebarTitle.setTextFill(Color.web("#444444"));
-        sidebarTitle.setPadding(new Insets(16, 16, 8, 16));
+        Button newChatBtn = new Button("＋  New Chat");
+        newChatBtn.setMaxWidth(Double.MAX_VALUE);
+        newChatBtn.setFont(Font.font("System", FontWeight.BOLD, 12));
+        newChatBtn.setStyle(
+            "-fx-background-color: " + PRIMARY_COLOR + ";" +
+            "-fx-text-fill: white;" +
+            "-fx-background-radius: 8;" +
+            "-fx-padding: 8 12 8 12;" +
+            "-fx-cursor: hand;"
+        );
+        newChatBtn.setOnAction(e -> startNewChat());
+        VBox.setMargin(newChatBtn, new Insets(12, 10, 8, 10));
 
-        sidebarList = new VBox(4);
+        Label sidebarTitle = new Label("Chat History");
+        sidebarTitle.setFont(Font.font("System", FontWeight.BOLD, 11));
+        sidebarTitle.setTextFill(Color.web("#999999"));
+        sidebarTitle.setPadding(new Insets(0, 16, 6, 16));
+
+        sidebarList = new VBox(2);
         sidebarList.setPadding(new Insets(0, 8, 8, 8));
 
         ScrollPane sidebarScroll = new ScrollPane(sidebarList);
@@ -136,10 +135,10 @@ public class ChatScreen {
         );
         VBox.setVgrow(sidebarScroll, Priority.ALWAYS);
 
-        VBox sidebar = new VBox(sidebarTitle, sidebarScroll);
-        sidebar.setPrefWidth(190);
-        sidebar.setMinWidth(190);
-        sidebar.setMaxWidth(190);
+        VBox sidebar = new VBox(newChatBtn, sidebarTitle, sidebarScroll);
+        sidebar.setPrefWidth(200);
+        sidebar.setMinWidth(200);
+        sidebar.setMaxWidth(200);
         sidebar.setStyle(
             "-fx-background-color: " + SIDEBAR_COLOR + ";" +
             "-fx-border-color: " + BORDER_COLOR + ";" +
@@ -148,8 +147,7 @@ public class ChatScreen {
 
         // ── Welcome empty state ──────────────────────────────────────
         ImageView welcomeLogo = new ImageView(new Image("file:images/logo.png"));
-        welcomeLogo.setFitWidth(80);
-        welcomeLogo.setFitHeight(80);
+        welcomeLogo.setFitWidth(80); welcomeLogo.setFitHeight(80);
 
         Label welcomeTitle = new Label("Welcome to QCU Assistant! 👋");
         welcomeTitle.setFont(Font.font("System", FontWeight.BOLD, 18));
@@ -242,10 +240,7 @@ public class ChatScreen {
             "-fx-max-height: 42px;" +
             "-fx-cursor: hand;"
         );
-        sendButton.setOnAction(e -> {
-            pulseSendButton();
-            sendMessage();
-        });
+        sendButton.setOnAction(e -> { pulseSendButton(); sendMessage(); });
 
         HBox inputControls = new HBox(10, inputField, sendButton);
         inputControls.setAlignment(Pos.CENTER);
@@ -269,7 +264,7 @@ public class ChatScreen {
         VBox root = new VBox(header, body);
         root.setStyle("-fx-background-color: " + BG_COLOR + ";");
 
-        Scene scene = new Scene(root, 860, 680);
+        Scene scene = new Scene(root, 900, 680);
         stage.setScene(scene);
         stage.setTitle("QCU Chatbot - " + username);
         stage.show();
@@ -283,107 +278,56 @@ public class ChatScreen {
 
         resetBtn.setOnAction(e -> {
             try {
-                Database.clearChatHistory(userId);
+                Database.clearAllSessions(userId);
             } catch (Exception ex) {
-                System.out.println("[DB] Failed to clear history: " + ex.getMessage());
+                System.out.println("[DB] Failed to clear sessions: " + ex.getMessage());
             }
+            currentSessionId = -1;
+            activeSessionBtn = null;
             bot.resetHistory();
             messageContainer.getChildren().clear();
+            sidebarList.getChildren().clear();
+            showEmptySidebar();
             showWelcomeState(true);
-            loadSidebarHistory();
-            addBotMessageAnimated("Chat reset! How can I help you? 😊");
         });
 
-        loadSidebarHistory();
-        loadChatHistory();
+        loadSessions();
         inputField.requestFocus();
     }
 
-    // ── Sidebar history ───────────────────────────────────────────────
-    private void loadSidebarHistory() {
-        sidebarList.getChildren().clear();
+    // ── Start a brand new chat session ───────────────────────────────
+    private void startNewChat() {
         try {
-            ResultSet rs = Database.getChatHistory(userId);
-            String lastDate = "";
-
-            while (rs.next()) {
-                String role    = rs.getString("role");
-                String message = rs.getString("message");
-                String time    = rs.getString("timestamp");
-                String date    = time.substring(0, 10);
-
-                if (role.equals("user")) {
-                    String topic = message.length() > 28 ? message.substring(0, 28) + "..." : message;
-
-                    if (!date.equals(lastDate)) {
-                        lastDate = date;
-                        Label dl = new Label(formatSidebarDate(date));
-                        dl.setFont(Font.font("System", FontWeight.BOLD, 10));
-                        dl.setTextFill(Color.web("#aaaaaa"));
-                        dl.setPadding(new Insets(8, 8, 2, 8));
-                        sidebarList.getChildren().add(dl);
-                    }
-
-                    Button entry = new Button(topic);
-                    entry.setMaxWidth(Double.MAX_VALUE);
-                    entry.setAlignment(Pos.CENTER_LEFT);
-                    entry.setFont(Font.font("System", 12));
-                    entry.setStyle(
-                        "-fx-background-color: transparent;" +
-                        "-fx-text-fill: #333333;" +
-                        "-fx-background-radius: 8;" +
-                        "-fx-padding: 6 10 6 10;" +
-                        "-fx-cursor: hand;" +
-                        "-fx-text-overrun: ellipsis;"
-                    );
-                    entry.setOnMouseEntered(e -> entry.setStyle(
-                        "-fx-background-color: #f0f0f0;" +
-                        "-fx-text-fill: #111111;" +
-                        "-fx-background-radius: 8;" +
-                        "-fx-padding: 6 10 6 10;" +
-                        "-fx-cursor: hand;" +
-                        "-fx-text-overrun: ellipsis;"
-                    ));
-                    entry.setOnMouseExited(e -> entry.setStyle(
-                        "-fx-background-color: transparent;" +
-                        "-fx-text-fill: #333333;" +
-                        "-fx-background-radius: 8;" +
-                        "-fx-padding: 6 10 6 10;" +
-                        "-fx-cursor: hand;" +
-                        "-fx-text-overrun: ellipsis;"
-                    ));
-                    sidebarList.getChildren().add(entry);
-                }
-            }
-            rs.close();
+            currentSessionId = Database.createSession(userId, "New Chat");
         } catch (Exception e) {
-            System.out.println("[Sidebar] Failed to load: " + e.getMessage());
+            System.out.println("[DB] Failed to create session: " + e.getMessage());
+            return;
         }
+
+        bot.resetHistory();
+        messageContainer.getChildren().clear();
+        showWelcomeState(true);
+        loadSessions();
+        inputField.requestFocus();
     }
 
-    private String formatSidebarDate(String dateStr) {
-        try {
-            LocalDate date      = LocalDate.parse(dateStr);
-            LocalDate today     = LocalDate.now();
-            LocalDate yesterday = today.minusDays(1);
-            if (date.equals(today)) return "Today";
-            if (date.equals(yesterday)) return "Yesterday";
-            return date.format(DateTimeFormatter.ofPattern("MMM d"));
-        } catch (Exception e) {
-            return dateStr;
+    // ── Load a session into the chat area ────────────────────────────
+    private void loadSession(int sessionId, Button btn) {
+        // Deactivate previous button
+        if (activeSessionBtn != null) {
+            activeSessionBtn.setStyle(sessionBtnStyle(false));
         }
-    }
+        activeSessionBtn = btn;
+        btn.setStyle(sessionBtnStyle(true));
 
-    private void showWelcomeState(boolean show) {
-        welcomeState.setVisible(show);
-        welcomeState.setManaged(show);
-    }
+        currentSessionId = sessionId;
+        bot.resetHistory();
+        messageContainer.getChildren().clear();
+        showWelcomeState(false);
 
-    // ── Load chat history ─────────────────────────────────────────────
-    private void loadChatHistory() {
         try {
-            ResultSet rs = Database.getChatHistory(userId);
-            boolean hasHistory = false;
+            ResultSet rs = Database.getSessionMessages(sessionId);
+            boolean hasMessages = false;
 
             while (rs.next()) {
                 String role    = rs.getString("role");
@@ -397,22 +341,128 @@ public class ChatScreen {
                     addBotMessage(message, time);
                     bot.addToHistory("assistant", message);
                 }
-                hasHistory = true;
+                hasMessages = true;
             }
             rs.close();
 
-            if (!hasHistory) {
+            if (!hasMessages) {
                 showWelcomeState(true);
-                addBotMessageAnimated("Hello, " + username + "! 👋 Welcome to Quezon City University. How can I help you today?");
-            } else {
-                showWelcomeState(false);
-                addBotMessageAnimated("Welcome back, " + username + "! 😊 How can I help you today?");
             }
 
         } catch (Exception e) {
-            showWelcomeState(true);
-            addBotMessageAnimated("Hello, " + username + "! 👋 Welcome to QCU. How can I help you today?");
+            System.out.println("[DB] Failed to load session: " + e.getMessage());
         }
+
+        inputField.requestFocus();
+    }
+
+    // ── Load sidebar sessions list ────────────────────────────────────
+    private void loadSessions() {
+        sidebarList.getChildren().clear();
+        try {
+            ResultSet rs = Database.getSessions(userId);
+            boolean hasSessions = false;
+            String lastDate = "";
+
+            while (rs.next()) {
+                int    sessionId = rs.getInt("id");
+                String title     = rs.getString("title");
+                String createdAt = rs.getString("created_at");
+                String date      = createdAt.substring(0, 10);
+
+                // Date separator
+                if (!date.equals(lastDate)) {
+                    lastDate = date;
+                    Label dl = new Label(formatSidebarDate(date));
+                    dl.setFont(Font.font("System", FontWeight.BOLD, 10));
+                    dl.setTextFill(Color.web("#aaaaaa"));
+                    dl.setPadding(new Insets(8, 8, 2, 8));
+                    sidebarList.getChildren().add(dl);
+                }
+
+                // Session button with delete X
+                boolean isActive = (sessionId == currentSessionId);
+
+                Button sessionBtn = new Button(title);
+                sessionBtn.setMaxWidth(Double.MAX_VALUE);
+                sessionBtn.setAlignment(Pos.CENTER_LEFT);
+                sessionBtn.setFont(Font.font("System", 12));
+                sessionBtn.setStyle(sessionBtnStyle(isActive));
+
+                if (isActive) activeSessionBtn = sessionBtn;
+
+                final int sid = sessionId;
+                sessionBtn.setOnAction(e -> loadSession(sid, sessionBtn));
+                sessionBtn.setOnMouseEntered(e -> {
+                    if (sessionBtn != activeSessionBtn)
+                        sessionBtn.setStyle(sessionBtnHoverStyle());
+                });
+                sessionBtn.setOnMouseExited(e -> {
+                    if (sessionBtn != activeSessionBtn)
+                        sessionBtn.setStyle(sessionBtnStyle(false));
+                });
+
+                // Delete button
+                Button deleteBtn = new Button("✕");
+                deleteBtn.setFont(Font.font("System", 10));
+                deleteBtn.setStyle(
+                    "-fx-background-color: transparent;" +
+                    "-fx-text-fill: #aaaaaa;" +
+                    "-fx-padding: 2 4 2 4;" +
+                    "-fx-cursor: hand;"
+                );
+                deleteBtn.setOnMouseEntered(e -> deleteBtn.setStyle(
+                    "-fx-background-color: transparent;" +
+                    "-fx-text-fill: #c01515;" +
+                    "-fx-padding: 2 4 2 4;" +
+                    "-fx-cursor: hand;"
+                ));
+                deleteBtn.setOnMouseExited(e -> deleteBtn.setStyle(
+                    "-fx-background-color: transparent;" +
+                    "-fx-text-fill: #aaaaaa;" +
+                    "-fx-padding: 2 4 2 4;" +
+                    "-fx-cursor: hand;"
+                ));
+                deleteBtn.setOnAction(e -> {
+                    try {
+                        Database.deleteSession(sid);
+                        if (currentSessionId == sid) {
+                            currentSessionId = -1;
+                            activeSessionBtn = null;
+                            bot.resetHistory();
+                            messageContainer.getChildren().clear();
+                            showWelcomeState(true);
+                        }
+                        loadSessions();
+                    } catch (Exception ex) {
+                        System.out.println("[DB] Failed to delete session: " + ex.getMessage());
+                    }
+                });
+
+                HBox row = new HBox(sessionBtn, deleteBtn);
+                row.setAlignment(Pos.CENTER_LEFT);
+                HBox.setHgrow(sessionBtn, Priority.ALWAYS);
+
+                sidebarList.getChildren().add(row);
+                hasSessions = true;
+            }
+            rs.close();
+
+            if (!hasSessions) showEmptySidebar();
+
+        } catch (Exception e) {
+            System.out.println("[Sidebar] Failed to load sessions: " + e.getMessage());
+        }
+    }
+
+    // ── Empty sidebar state ───────────────────────────────────────────
+    private void showEmptySidebar() {
+        Label empty = new Label("No chats yet.\nClick '＋ New Chat'\nto get started!");
+        empty.setFont(Font.font("System", 11));
+        empty.setTextFill(Color.web("#bbbbbb"));
+        empty.setTextAlignment(javafx.scene.text.TextAlignment.CENTER);
+        empty.setPadding(new Insets(20, 10, 10, 10));
+        sidebarList.getChildren().add(empty);
     }
 
     // ── Send message ──────────────────────────────────────────────────
@@ -420,12 +470,28 @@ public class ChatScreen {
         String text = inputField.getText().trim();
         if (text.isBlank() || sendButton.isDisabled()) return;
 
+        // Auto-create session if none active
+        if (currentSessionId == -1) {
+            try {
+                String title = text.length() > 40 ? text.substring(0, 40) + "..." : text;
+                currentSessionId = Database.createSession(userId, title);
+                loadSessions();
+            } catch (Exception e) {
+                System.out.println("[DB] Failed to create session: " + e.getMessage());
+                return;
+            }
+        }
+
         showWelcomeState(false);
         inputField.clear();
         addUserMessage(text, null);
 
+        // Update session title to first message if still "New Chat"
+        final int sid = currentSessionId;
         try {
-            Database.saveMessage(userId, "user", text);
+            String title = text.length() > 40 ? text.substring(0, 40) + "..." : text;
+            Database.updateSessionTitle(sid, title);
+            Database.saveMessage(userId, sid, "user", text);
         } catch (Exception e) {
             System.out.println("[DB] Failed to save message: " + e.getMessage());
         }
@@ -443,11 +509,17 @@ public class ChatScreen {
                 addBotMessageAnimated("⚠️ " + reply.substring(6));
             } else {
                 addBotMessageAnimated(reply);
-                try { Database.saveMessage(userId, "assistant", reply); }
+                try { Database.saveMessage(userId, sid, "assistant", reply); }
                 catch (Exception e) { System.out.println("[DB] Failed to save reply: " + e.getMessage()); }
-                loadSidebarHistory();
             }
+            loadSessions();
         }));
+    }
+
+    // ── Welcome state ─────────────────────────────────────────────────
+    private void showWelcomeState(boolean show) {
+        welcomeState.setVisible(show);
+        welcomeState.setManaged(show);
     }
 
     // ── Status indicator ──────────────────────────────────────────────
@@ -464,7 +536,7 @@ public class ChatScreen {
 
         Label bubble = new Label(text);
         bubble.setWrapText(true);
-        bubble.setMaxWidth(340);
+        bubble.setMaxWidth(360);
         bubble.setFont(Font.font("System", 13));
         bubble.setTextFill(Color.WHITE);
         bubble.setStyle(
@@ -489,14 +561,14 @@ public class ChatScreen {
         scrollToBottom();
     }
 
-    // ── Bot bubble (history, no animation) ───────────────────────────
+    // ── Bot bubble (no animation) ─────────────────────────────────────
     private void addBotMessage(String text, String time) {
         String timestamp = (time != null) ? time.substring(11, 16) : nowTime();
         ImageView icon = makeBotIcon();
 
         Label bubble = new Label(text);
         bubble.setWrapText(true);
-        bubble.setMaxWidth(340);
+        bubble.setMaxWidth(360);
         bubble.setFont(Font.font("System", 13));
         bubble.setTextFill(Color.web("#202124"));
         bubble.setStyle(
@@ -528,7 +600,7 @@ public class ChatScreen {
 
         Label bubble = new Label("");
         bubble.setWrapText(true);
-        bubble.setMaxWidth(340);
+        bubble.setMaxWidth(360);
         bubble.setFont(Font.font("System", 13));
         bubble.setTextFill(Color.web("#202124"));
         bubble.setStyle(
@@ -556,18 +628,18 @@ public class ChatScreen {
 
         final int[] index = {0};
         int delay = Math.max(12, 800 / Math.max(fullText.length(), 1));
-        Timeline typingTimeline = new Timeline();
-        typingTimeline.setCycleCount(fullText.length());
-        typingTimeline.getKeyFrames().add(new KeyFrame(Duration.millis(delay), e -> {
+        Timeline tl = new Timeline();
+        tl.setCycleCount(fullText.length());
+        tl.getKeyFrames().add(new KeyFrame(Duration.millis(delay), e -> {
             index[0]++;
             bubble.setText(fullText.substring(0, index[0]));
             scrollToBottom();
         }));
-        typingTimeline.setOnFinished(e -> {
+        tl.setOnFinished(e -> {
             FadeTransition ft = new FadeTransition(Duration.millis(400), timeLabel);
             ft.setFromValue(0); ft.setToValue(1); ft.play();
         });
-        typingTimeline.play();
+        tl.play();
     }
 
     // ── Animated dots ─────────────────────────────────────────────────
@@ -643,8 +715,7 @@ public class ChatScreen {
 
         VBox card = new VBox(6, emojiLabel, textLabel);
         card.setAlignment(Pos.CENTER);
-        card.setPrefWidth(170);
-        card.setPrefHeight(90);
+        card.setPrefWidth(170); card.setPrefHeight(90);
         card.setPadding(new Insets(14));
         card.setStyle(
             "-fx-background-color: white;" +
@@ -670,10 +741,7 @@ public class ChatScreen {
             "-fx-cursor: hand;" +
             "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 6, 0, 0, 2);"
         ));
-        card.setOnMouseClicked(e -> {
-            inputField.setText(text);
-            sendMessage();
-        });
+        card.setOnMouseClicked(e -> { inputField.setText(text); sendMessage(); });
         return card;
     }
 
@@ -715,12 +783,62 @@ public class ChatScreen {
         return icon;
     }
 
+    private String formatSidebarDate(String dateStr) {
+        try {
+            LocalDate date      = LocalDate.parse(dateStr);
+            LocalDate today     = LocalDate.now();
+            LocalDate yesterday = today.minusDays(1);
+            if (date.equals(today)) return "Today";
+            if (date.equals(yesterday)) return "Yesterday";
+            return date.format(DateTimeFormatter.ofPattern("MMM d"));
+        } catch (Exception e) { return dateStr; }
+    }
+
     private String nowTime() {
         return LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm"));
     }
 
     private void scrollToBottom() {
         Platform.runLater(() -> scrollPane.setVvalue(1.0));
+    }
+
+    // ── Style helpers ─────────────────────────────────────────────────
+    private String sessionBtnStyle(boolean active) {
+        return active
+            ? "-fx-background-color: #fde8e8;" +
+              "-fx-text-fill: #c01515;" +
+              "-fx-background-radius: 8;" +
+              "-fx-padding: 7 10 7 10;" +
+              "-fx-cursor: hand;" +
+              "-fx-alignment: center-left;" +
+              "-fx-text-overrun: ellipsis;"
+            : "-fx-background-color: transparent;" +
+              "-fx-text-fill: #333333;" +
+              "-fx-background-radius: 8;" +
+              "-fx-padding: 7 10 7 10;" +
+              "-fx-cursor: hand;" +
+              "-fx-alignment: center-left;" +
+              "-fx-text-overrun: ellipsis;";
+    }
+
+    private String sessionBtnHoverStyle() {
+        return "-fx-background-color: #f0f0f0;" +
+               "-fx-text-fill: #111111;" +
+               "-fx-background-radius: 8;" +
+               "-fx-padding: 7 10 7 10;" +
+               "-fx-cursor: hand;" +
+               "-fx-alignment: center-left;" +
+               "-fx-text-overrun: ellipsis;";
+    }
+
+    private String headerBtnStyle() {
+        return "-fx-background-color: transparent;" +
+               "-fx-text-fill: white;" +
+               "-fx-border-color: rgba(255,255,255,0.6);" +
+               "-fx-border-radius: 12;" +
+               "-fx-background-radius: 12;" +
+               "-fx-font-size: 11px;" +
+               "-fx-cursor: hand;";
     }
 
     private void showAlert(String title, String msg) {
